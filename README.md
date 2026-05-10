@@ -39,12 +39,8 @@ A classic snake game where the player controls the snake to collect food and gro
 
 ### Screenshot:
 
-
-![Sudoku Game](./screenshots/sudoku.png)
 ![Snake Game](./screenshots/snake.png)
-![Dashboard](./screenshots/dashboard.png)
-![Data Analytics](./screenshots/analytics.png)
-![Tic Tac Toe](./screenshots/tictactoe.png)
+
 ---
 
 ## 3. Dashboard
