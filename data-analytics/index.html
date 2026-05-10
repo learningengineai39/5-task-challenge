@@ -1,0 +1,518 @@
+<!DOCTYPE html>
+<html lang="en" data-theme="dark">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nexus Analytics | Premium SaaS Platform</title>
+    
+    <!-- Fonts & Icons -->
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/icon?family=Material+Icons+Round" rel="stylesheet">
+    
+    <!-- Custom CSS -->
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Libraries -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://d3js.org/d3.v7.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/PapaParse/5.4.1/papaparse.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/Sortable/1.15.0/Sortable.min.js"></script>
+</head>
+<body>
+    <div id="app" class="layout-container">
+        <!-- Sidebar Navigation -->
+        <aside class="sidebar glass-panel">
+            <div class="sidebar-header">
+                <span class="material-icons-round logo-icon">insights</span>
+                <span class="logo-text">Nexus</span>
+            </div>
+            <nav class="nav-menu" id="main-nav">
+                <a href="#upload" class="nav-item active" data-view="upload">
+                    <span class="material-icons-round">cloud_upload</span> Data Import
+                </a>
+                <a href="#grid" class="nav-item disabled" data-view="grid">
+                    <span class="material-icons-round">table_chart</span> Data Grid
+                </a>
+                <a href="#cleaning" class="nav-item disabled" data-view="cleaning">
+                    <span class="material-icons-round">cleaning_services</span> Data Cleaning
+                </a>
+                <a href="#statistics" class="nav-item disabled" data-view="statistics">
+                    <span class="material-icons-round">calculate</span> Statistics
+                </a>
+                <a href="#charts" class="nav-item disabled" data-view="charts">
+                    <span class="material-icons-round">bar_chart</span> Visualization
+                </a>
+                <a href="#correlation" class="nav-item disabled" data-view="correlation">
+                    <span class="material-icons-round">grid_on</span> Correlation
+                </a>
+                <a href="#forecast" class="nav-item disabled" data-view="forecast">
+                    <span class="material-icons-round">trending_up</span> Forecasting
+                </a>
+                <a href="#dashboard" class="nav-item disabled" data-view="dashboard">
+                    <span class="material-icons-round">dashboard</span> Dashboard
+                </a>
+                <a href="#export" class="nav-item disabled" data-view="export">
+                    <span class="material-icons-round">file_download</span> Export
+                </a>
+            </nav>
+            <div class="sidebar-footer flex-col gap-2">
+                <div class="saved-reports-btn" id="btn-save-report">
+                    <span class="material-icons-round">save</span> Save Report
+                </div>
+                <div class="saved-reports-btn" id="btn-load-report">
+                    <span class="material-icons-round">folder_open</span> Load Report
+                </div>
+            </div>
+        </aside>
+
+        <!-- Main Workspace -->
+        <main class="main-content">
+            <!-- Topbar -->
+            <header class="topbar glass-panel">
+                <div class="global-filters" id="global-filters" style="display:none; align-items:center; gap: 12px;">
+                    <span class="material-icons-round text-secondary">filter_alt</span>
+                    <input type="text" id="global-search" class="input-glass" placeholder="Global filter..." style="width: 250px;">
+                    <button class="btn btn-sm btn-outline" id="btn-clear-global-filter">Clear</button>
+                </div>
+                <div class="topbar-actions">
+                    <button class="icon-btn glass" id="theme-toggle" title="Toggle Theme">
+                        <span class="material-icons-round" id="theme-icon">light_mode</span>
+                    </button>
+                    <div class="user-profile">
+                        <img src="https://i.pravatar.cc/150?img=68" alt="User Profile">
+                    </div>
+                </div>
+            </header>
+
+            <!-- Dynamic Views Container -->
+            <div class="views-wrapper" id="views-wrapper">
+                
+                <!-- 1. Upload View -->
+                <div class="view active fade-in" id="view-upload">
+                    <div class="header-section">
+                        <h1>Universal Data Ingestion Engine</h1>
+                        <p>Upload CSV, Excel (XLSX), or JSON files to begin processing. Schema and types are automatically inferred.</p>
+                    </div>
+                    <div class="upload-zone glass-card" id="drop-zone">
+                        <span class="material-icons-round upload-icon">cloud_upload</span>
+                        <h3>Drag & Drop Files Here</h3>
+                        <p>or click to browse your system</p>
+                        <input type="file" id="file-input" accept=".csv, application/vnd.openxmlformats-officedocument.spreadsheetml.sheet, application/vnd.ms-excel, .json" hidden>
+                        <button class="btn btn-primary mt-4" id="btn-browse">Browse Files</button>
+                        <div class="upload-formats">Supported formats: CSV, XLSX, JSON</div>
+                    </div>
+                    
+                    <div class="dataset-info hidden glass-card mt-6" id="dataset-summary">
+                        <div class="flex-between">
+                            <h3>Dataset Summary</h3>
+                            <button class="btn btn-sm btn-outline" id="btn-reset-data"><span class="material-icons-round" style="font-size: 16px;">restart_alt</span> Reset</button>
+                        </div>
+                        <div class="metrics-grid mt-4">
+                            <div class="metric-card"><span class="label">Total Records</span><span class="value" id="summary-rows">0</span></div>
+                            <div class="metric-card"><span class="label">Total Features</span><span class="value" id="summary-cols">0</span></div>
+                            <div class="metric-card"><span class="label">Est. File Size</span><span class="value" id="summary-size">0 KB</span></div>
+                        </div>
+                        <div class="schema-preview mt-6">
+                            <h4>Inferred Schema & Data Types</h4>
+                            <div class="schema-tags mt-2" id="schema-tags"></div>
+                        </div>
+                        <button class="btn btn-success mt-6 w-full" id="btn-proceed-grid">Proceed to Data Grid <span class="material-icons-round ml-2">arrow_forward</span></button>
+                    </div>
+                </div>
+
+                <!-- 2. Data Grid View -->
+                <div class="view hidden fade-in" id="view-grid">
+                    <div class="header-section flex-between">
+                        <div>
+                            <h1>Advanced Data Grid</h1>
+                            <p>Interact, filter, and edit your raw dataset in real-time. Double click cells to inline edit.</p>
+                        </div>
+                        <div class="grid-controls flex-gap">
+                            <div class="search-box">
+                                <span class="material-icons-round">search</span>
+                                <input type="text" id="grid-search" placeholder="Search across columns..." class="input-glass">
+                            </div>
+                            <button class="btn btn-outline" id="btn-add-row"><span class="material-icons-round">add</span> Add Row</button>
+                            <button class="btn btn-outline" id="btn-delete-row"><span class="material-icons-round">remove</span> Delete Row</button>
+                        </div>
+                    </div>
+                    <div class="table-container glass-card" id="main-table-container">
+                        <table id="main-table">
+                            <thead id="main-table-head"></thead>
+                            <tbody id="main-table-body"></tbody>
+                        </table>
+                    </div>
+                    <div class="pagination-controls flex-between mt-4">
+                        <div class="grid-stats">Showing <span id="grid-start-idx" class="font-bold">0</span> - <span id="grid-end-idx" class="font-bold">0</span> of <span id="grid-total-idx" class="font-bold">0</span> records</div>
+                        <div class="page-buttons flex-gap">
+                            <button class="icon-btn glass" id="btn-prev-page"><span class="material-icons-round">chevron_left</span></button>
+                            <div class="page-indicator glass-panel flex-center" style="padding: 0 16px; border-radius: 8px;">Page <span id="grid-current-page" class="ml-1 mr-1 font-bold">1</span> of <span id="grid-total-pages" class="ml-1 font-bold">1</span></div>
+                            <button class="icon-btn glass" id="btn-next-page"><span class="material-icons-round">chevron_right</span></button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 3. Data Cleaning View -->
+                <div class="view hidden fade-in" id="view-cleaning">
+                    <div class="header-section flex-between">
+                        <div>
+                            <h1>Data Cleaning Module</h1>
+                            <p>Sanitize, impute, and transform features for accurate analysis.</p>
+                        </div>
+                        <button class="btn btn-outline" id="btn-undo-clean" disabled><span class="material-icons-round">undo</span> Undo Last Change</button>
+                    </div>
+                    <div class="cleaning-grid">
+                        <!-- Duplicates -->
+                        <div class="clean-card glass-card relative-container">
+                            <h3><span class="material-icons-round mr-2 text-primary">content_copy</span> Duplication Handling</h3>
+                            <p class="text-sm mb-4">Identify and remove redundant data points.</p>
+                            <div class="control-group">
+                                <button class="btn btn-secondary w-full mb-3" id="btn-clean-dup-all">Remove Exact Row Duplicates</button>
+                                <hr style="border-color: var(--border-light); margin: 12px 0;">
+                                <label>Target Column for Duplicates:</label>
+                                <select id="select-dup-col" class="input-glass w-full mb-2"></select>
+                                <button class="btn btn-outline w-full" id="btn-clean-dup-col">Remove By Column</button>
+                            </div>
+                        </div>
+                        
+                        <!-- Missing Values -->
+                        <div class="clean-card glass-card">
+                            <h3><span class="material-icons-round mr-2 text-warning">device_unknown</span> Missing Value Imputation</h3>
+                            <p class="text-sm mb-4">Handle nulls and empty cells strategically.</p>
+                            <div class="control-group">
+                                <label>Target Feature:</label>
+                                <select id="select-missing-col" class="input-glass w-full mb-2"></select>
+                                <label>Strategy:</label>
+                                <select id="select-missing-action" class="input-glass w-full mb-2">
+                                    <option value="remove">Drop Rows</option>
+                                    <option value="mean">Impute with Mean (Numeric)</option>
+                                    <option value="median">Impute with Median (Numeric)</option>
+                                    <option value="custom">Fill Custom Value</option>
+                                </select>
+                                <input type="text" id="input-missing-custom" class="input-glass w-full mb-2 hidden" placeholder="Enter custom fill value...">
+                                <button class="btn btn-secondary w-full mt-2" id="btn-clean-missing">Execute Strategy</button>
+                            </div>
+                        </div>
+
+                        <!-- Text Formatting -->
+                        <div class="clean-card glass-card">
+                            <h3><span class="material-icons-round mr-2 text-success">text_format</span> Feature Transformation</h3>
+                            <p class="text-sm mb-4">Standardize text formats and data types.</p>
+                            <div class="control-group">
+                                <label>Target Feature:</label>
+                                <select id="select-format-col" class="input-glass w-full mb-2"></select>
+                                <label>Operation:</label>
+                                <select id="select-format-action" class="input-glass w-full mb-2">
+                                    <option value="trim">Trim Whitespace</option>
+                                    <option value="lower">Convert to Lowercase</option>
+                                    <option value="upper">Convert to Uppercase</option>
+                                    <option value="special">Strip Special Characters</option>
+                                    <option value="to_num">Cast to Numeric</option>
+                                    <option value="to_str">Cast to String</option>
+                                </select>
+                                <button class="btn btn-secondary w-full mt-2" id="btn-clean-format">Apply Transformation</button>
+                            </div>
+                        </div>
+
+                        <!-- Normalization -->
+                        <div class="clean-card glass-card">
+                            <h3><span class="material-icons-round mr-2 text-secondary">scale</span> Data Normalization</h3>
+                            <p class="text-sm mb-4">Scale numeric features for machine learning readiness.</p>
+                            <div class="control-group">
+                                <label>Numeric Feature:</label>
+                                <select id="select-norm-col" class="input-glass w-full mb-2"></select>
+                                <label>Scaling Algorithm:</label>
+                                <select id="select-norm-method" class="input-glass w-full mb-2">
+                                    <option value="minmax">Min-Max Scaling (0 to 1)</option>
+                                    <option value="zscore">Z-Score Standardization</option>
+                                </select>
+                                <button class="btn btn-secondary w-full mt-2" id="btn-clean-norm">Normalize Feature</button>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 4. Statistics View -->
+                <div class="view hidden fade-in" id="view-statistics">
+                    <div class="header-section">
+                        <h1>Descriptive Statistical Engine</h1>
+                        <p>Deep-dive into central tendencies, distributions, and variance metrics.</p>
+                    </div>
+                    
+                    <div class="ai-insights-panel glass-card highlight-border mb-6">
+                        <div class="flex-between mb-4">
+                            <h3 class="flex-align"><span class="material-icons-round text-gradient mr-2">auto_awesome</span> Automated AI Insights</h3>
+                            <button class="btn btn-sm btn-primary" id="btn-generate-insights"><span class="material-icons-round mr-1" style="font-size:16px;">refresh</span> Regenerate</button>
+                        </div>
+                        <ul id="ai-insights-list" class="insights-list">
+                            <li>Awaiting data selection to generate algorithmic business insights.</li>
+                        </ul>
+                    </div>
+
+                    <div class="stats-controls mb-6 flex-align flex-gap glass-panel p-4" style="border-radius: 12px; padding: 16px;">
+                        <label class="font-bold">Select Numeric Feature to Analyze:</label>
+                        <select id="select-stats-col" class="input-glass" style="max-width: 300px;"></select>
+                        <button class="btn btn-primary" id="btn-calc-stats">Calculate Stats</button>
+                    </div>
+
+                    <div class="stats-dashboard grid-stats-layout">
+                        <!-- Central Tendency -->
+                        <div class="stats-group glass-card">
+                            <h3 class="text-primary border-bottom mb-4 pb-2">Central Tendency</h3>
+                            <div class="metrics-list" id="stats-central">
+                                <div class="metric-row"><span class="text-secondary">Mean (Average)</span><span class="font-bold">--</span></div>
+                                <div class="metric-row"><span class="text-secondary">Median</span><span class="font-bold">--</span></div>
+                                <div class="metric-row"><span class="text-secondary">Mode</span><span class="font-bold">--</span></div>
+                            </div>
+                        </div>
+                        <!-- Spread -->
+                        <div class="stats-group glass-card">
+                            <h3 class="text-warning border-bottom mb-4 pb-2">Dispersion / Spread</h3>
+                            <div class="metrics-list" id="stats-spread">
+                                <div class="metric-row"><span class="text-secondary">Variance</span><span class="font-bold">--</span></div>
+                                <div class="metric-row"><span class="text-secondary">Standard Deviation</span><span class="font-bold">--</span></div>
+                                <div class="metric-row"><span class="text-secondary">Range</span><span class="font-bold">--</span></div>
+                                <div class="metric-row"><span class="text-secondary">IQR</span><span class="font-bold">--</span></div>
+                            </div>
+                        </div>
+                        <!-- Distribution -->
+                        <div class="stats-group glass-card">
+                            <h3 class="text-success border-bottom mb-4 pb-2">Distribution Summary</h3>
+                            <div class="metrics-list" id="stats-dist">
+                                <div class="metric-row"><span class="text-secondary">Minimum</span><span class="font-bold">--</span></div>
+                                <div class="metric-row"><span class="text-secondary">Maximum</span><span class="font-bold">--</span></div>
+                                <div class="metric-row"><span class="text-secondary">Sum Total</span><span class="font-bold">--</span></div>
+                                <div class="metric-row"><span class="text-secondary">Valid Count</span><span class="font-bold">--</span></div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 5. Visualization View -->
+                <div class="view hidden fade-in" id="view-charts">
+                    <div class="header-section">
+                        <h1>Dynamic Visualization Builder</h1>
+                        <p>Construct multi-dimensional charts using integrated Chart.js and D3 renderers.</p>
+                    </div>
+                    <div class="builder-layout">
+                        <div class="builder-sidebar glass-card">
+                            <h3 class="border-bottom pb-2 mb-4">Chart Configuration</h3>
+                            <div class="control-group mt-2">
+                                <label>Chart Type:</label>
+                                <select id="chart-type" class="input-glass w-full">
+                                    <option value="bar">Bar Chart</option>
+                                    <option value="line">Line Chart</option>
+                                    <option value="pie">Pie Chart</option>
+                                    <option value="doughnut">Doughnut Chart</option>
+                                    <option value="scatter">Scatter Plot</option>
+                                    <option value="radar">Radar Chart</option>
+                                </select>
+                            </div>
+                            <div class="control-group mt-4">
+                                <label>X-Axis (Dimension/Label):</label>
+                                <select id="chart-x" class="input-glass w-full"></select>
+                            </div>
+                            <div class="control-group mt-4">
+                                <label>Y-Axis (Measure/Value):</label>
+                                <select id="chart-y" class="input-glass w-full"></select>
+                            </div>
+                            <div class="control-group mt-4">
+                                <label>Aggregation (For Categorical X):</label>
+                                <select id="chart-agg" class="input-glass w-full">
+                                    <option value="sum">Sum</option>
+                                    <option value="avg">Average</option>
+                                    <option value="count">Count</option>
+                                </select>
+                            </div>
+                            <div class="control-group mt-4 flex-align gap-2">
+                                <input type="color" id="chart-color" value="#4f46e5" class="glass-panel" style="width: 40px; height: 40px; border-radius: 8px; border:none; cursor:pointer;">
+                                <label class="mb-0">Primary Theme Color</label>
+                            </div>
+                            
+                            <button class="btn btn-primary w-full mt-6" id="btn-render-chart"><span class="material-icons-round mr-2">play_arrow</span> Render Visualization</button>
+                            <button class="btn btn-secondary w-full mt-3" id="btn-compare-charts"><span class="material-icons-round mr-2">compare</span> Compare Charts</button>
+                            <button class="btn btn-outline w-full mt-3" id="btn-save-chart"><span class="material-icons-round mr-2">push_pin</span> Pin to Dashboard</button>
+                        </div>
+                        <div class="builder-canvas glass-card relative-container flex-center">
+                            <canvas id="main-chart-canvas"></canvas>
+                            <div id="chart-empty-state" class="text-center opacity-50 absolute">
+                                <span class="material-icons-round" style="font-size: 4rem;">bar_chart</span>
+                                <p>Configure settings and click Render</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 6. Correlation View -->
+                <div class="view hidden fade-in" id="view-correlation">
+                    <div class="header-section flex-between">
+                        <div>
+                            <h1>Correlation Matrix Analyzer</h1>
+                            <p>Discover hidden multi-collinear relationships across all numeric features using Pearson correlation.</p>
+                        </div>
+                        <button class="btn btn-primary" id="btn-gen-correlation"><span class="material-icons-round mr-2">grid_on</span> Generate Correlation Matrix</button>
+                    </div>
+                    <div class="corr-layout">
+                        <div class="corr-matrix glass-card flex-center flex-col relative-container" style="min-height: 500px; overflow: auto;">
+                            <div id="d3-heatmap-container"></div>
+                            <div id="corr-empty-state" class="text-center opacity-50 absolute">
+                                <span class="material-icons-round" style="font-size: 4rem;">grid_on</span>
+                                <p>Requires at least 2 numeric columns.</p>
+                            </div>
+                        </div>
+                        <div class="corr-insights glass-card">
+                            <h3 class="border-bottom pb-2 mb-4"><span class="material-icons-round mr-2 text-primary">insights</span> Discovered Relationships</h3>
+                            <div id="corr-insights-list" class="mt-4 flex-col gap-3">
+                                <p class="text-secondary italic">Awaiting analysis...</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 7. Forecast View -->
+                <div class="view hidden fade-in" id="view-forecast">
+                    <div class="header-section">
+                        <h1>Predictive Forecasting Engine</h1>
+                        <p>Extrapolate future trends utilizing statistical modeling and time-series logic.</p>
+                    </div>
+                    <div class="builder-layout">
+                        <div class="builder-sidebar glass-card">
+                            <h3 class="border-bottom pb-2 mb-4">Model Configuration</h3>
+                            <div class="control-group mt-2">
+                                <label>Time/Sequence Feature (X):</label>
+                                <select id="forecast-x" class="input-glass w-full"></select>
+                            </div>
+                            <div class="control-group mt-4">
+                                <label>Target Variable (Y):</label>
+                                <select id="forecast-y" class="input-glass w-full"></select>
+                            </div>
+                            <div class="control-group mt-4">
+                                <label>Algorithm:</label>
+                                <select id="forecast-model" class="input-glass w-full">
+                                    <option value="linear">Ordinary Least Squares (Linear Regression)</option>
+                                    <option value="sma">Simple Moving Average (SMA Trend)</option>
+                                </select>
+                            </div>
+                            <div class="control-group mt-4">
+                                <label>Forecast Horizon (N steps forward):</label>
+                                <input type="number" id="forecast-window" class="input-glass w-full" value="5" min="1" max="100">
+                            </div>
+                            <button class="btn btn-primary w-full mt-6" id="btn-run-forecast"><span class="material-icons-round mr-2">timeline</span> Generate Forecast</button>
+                            <button class="btn btn-outline w-full mt-3" id="btn-save-forecast"><span class="material-icons-round mr-2">push_pin</span> Pin to Dashboard</button>
+                        </div>
+                        <div class="builder-canvas glass-card relative-container flex-center">
+                            <canvas id="forecast-chart-canvas"></canvas>
+                            <div id="forecast-empty-state" class="text-center opacity-50 absolute">
+                                <span class="material-icons-round" style="font-size: 4rem;">trending_up</span>
+                                <p>Configure model parameters to predict.</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- 8. Dashboard View -->
+                <div class="view hidden fade-in" id="view-dashboard">
+                    <div class="header-section flex-between">
+                        <div>
+                            <h1>Executive Dashboard</h1>
+                            <p>Build custom reporting views. Drag to reorder. Configuration is saved locally.</p>
+                        </div>
+                        <div class="flex-gap">
+                            <button class="btn btn-outline" id="btn-add-widget-dash"><span class="material-icons-round">add</span> Add Widget</button>
+                            <button class="btn btn-outline" id="btn-clear-dash"><span class="material-icons-round">delete_sweep</span> Clear All</button>
+                            <button class="btn btn-secondary" id="btn-restore-dash"><span class="material-icons-round">restore</span> Restore Layout</button>
+                            <button class="btn btn-primary" id="btn-save-dash"><span class="material-icons-round">save</span> Save Layout</button>
+                        </div>
+                    </div>
+                    <div class="dashboard-grid" id="sortable-dashboard">
+                        <!-- Widgets dynamically injected here -->
+                    </div>
+                    <div id="dash-empty-state" class="dash-empty-state text-center w-full mt-10">
+                        <span class="material-icons-round" style="font-size: 4rem; opacity: 0.3;">dashboard_customize</span>
+                        <p class="mt-4 text-secondary">Your dashboard canvas is empty.<br>Pin charts from the Visualization or Forecast tabs to build your view.</p>
+                    </div>
+                </div>
+
+                <!-- 9. Export View -->
+                <div class="view hidden fade-in" id="view-export">
+                    <div class="header-section">
+                        <h1>Distribution & Export</h1>
+                        <p>Generate professional artifacts of your data analysis session.</p>
+                    </div>
+                    <div class="export-grid mt-6">
+                        <div class="export-card glass-card flex-center flex-col text-center">
+                            <span class="material-icons-round export-icon text-success">table_view</span>
+                            <h3 class="mt-2">Export CSV</h3>
+                            <p class="text-sm opacity-70 mb-6">Standard comma-separated format for downstream tools.</p>
+                            <button class="btn btn-outline w-full" id="btn-export-csv">Download CSV</button>
+                        </div>
+                        <div class="export-card glass-card flex-center flex-col text-center">
+                            <span class="material-icons-round export-icon text-success">grid_on</span>
+                            <h3 class="mt-2">Export Excel</h3>
+                            <p class="text-sm opacity-70 mb-6">Native XLSX format supporting complex data types.</p>
+                            <button class="btn btn-outline w-full" id="btn-export-xlsx">Download XLSX</button>
+                        </div>
+                        <div class="export-card glass-card flex-center flex-col text-center" style="border: 1px solid var(--accent-primary);">
+                            <span class="material-icons-round export-icon text-primary">picture_as_pdf</span>
+                            <h3 class="mt-2 text-primary">Executive Report</h3>
+                            <p class="text-sm opacity-70 mb-6">Comprehensive PDF containing summary, insights, and dashboard visuals.</p>
+                            <button class="btn btn-primary w-full" id="btn-export-pdf">Generate PDF</button>
+                        </div>
+                        <div class="export-card glass-card flex-center flex-col text-center">
+                            <span class="material-icons-round export-icon text-warning">data_object</span>
+                            <h3 class="mt-2">Export JSON</h3>
+                            <p class="text-sm opacity-70 mb-6">Raw structured array for developers and API payloads.</p>
+                            <button class="btn btn-outline w-full" id="btn-export-json">Download JSON</button>
+                        </div>
+                        <div class="export-card glass-card flex-center flex-col text-center">
+                            <span class="material-icons-round export-icon text-secondary">image</span>
+                            <h3 class="mt-2">Export PNG</h3>
+                            <p class="text-sm opacity-70 mb-6">Snapshot of your visualization canvas.</p>
+                            <button class="btn btn-outline w-full" id="btn-export-png">Download PNG</button>
+                        </div>
+                    </div>
+                    
+                    <!-- Hidden Render Target for PDF Generation -->
+                    <div class="report-preview mt-8 hidden" id="report-preview-container">
+                        <div id="pdf-report-content" style="width: 800px; background: white; color: black; padding: 40px; position: absolute; left: -9999px; top: 0; font-family: sans-serif;">
+                            <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid #4f46e5; padding-bottom: 20px; margin-bottom: 30px;">
+                                <h1 style="margin:0; color: #1e293b; font-size: 28px;">Nexus Analytics Report</h1>
+                                <p style="margin:0; color: #64748b; font-size: 14px;" id="pdf-date"></p>
+                            </div>
+                            
+                            <h2 style="color: #1e293b; font-size: 20px; margin-bottom: 15px;">Dataset Overview</h2>
+                            <table style="width: 100%; border-collapse: collapse; margin-bottom: 30px; font-size: 14px;">
+                                <tr>
+                                    <th style="text-align: left; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0; width: 30%;">Total Records</th>
+                                    <td id="pdf-rows" style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold;"></td>
+                                </tr>
+                                <tr>
+                                    <th style="text-align: left; padding: 12px; background: #f8fafc; border: 1px solid #e2e8f0;">Features</th>
+                                    <td id="pdf-cols" style="padding: 12px; border: 1px solid #e2e8f0; font-weight: bold;"></td>
+                                </tr>
+                            </table>
+
+                            <h2 style="color: #1e293b; font-size: 20px; margin-bottom: 15px;">Key AI Insights</h2>
+                            <ul id="pdf-insights" style="margin-bottom: 30px; padding-left: 20px; color: #334155; line-height: 1.6; font-size: 14px;"></ul>
+                            
+                            <h2 style="color: #1e293b; font-size: 20px; margin-bottom: 15px;">Dashboard Visuals</h2>
+                            <div id="pdf-charts-container" style="display: flex; flex-direction: column; gap: 30px;">
+                                <!-- Captured Canvas Images Injected Here -->
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+            </div>
+        </main>
+    </div>
+
+    <!-- Toast Notifications Container -->
+    <div id="notification-container" class="toast-container"></div>
+
+    <script src="script.js"></script>
+</body>
+</html>
